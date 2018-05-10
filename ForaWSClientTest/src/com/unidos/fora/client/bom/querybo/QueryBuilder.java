@@ -128,7 +128,7 @@ public class QueryBuilder {
 		query.append("<QCase>");
 		
 		//append pid list of provided
-		if (!pids.isEmpty() || pids == null) {
+		if (!pids.isEmpty()) {
 			for (String pid : pids) {
 				query.append("<PID>" + pid  + "</PID>");
 			}
@@ -174,11 +174,13 @@ public class QueryBuilder {
 		query.append("<QIDType>" + QIDType +"</QIDType>");
 		query.append("<QCase>");
 		
-		//append pid list
-		for (String id : ids) {
-			query.append("<QID>" + id  + "</QID>");
-		}
 		
+		//append pid list
+		if (!ids.isEmpty()) {
+			for (String id : ids) {
+				query.append("<QID>" + id  + "</QID>");
+			}
+		}
 		query.append("</QCase>");
 		query.append("</QueryData>");
 		
