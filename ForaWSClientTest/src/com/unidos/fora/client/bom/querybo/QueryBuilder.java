@@ -7,8 +7,8 @@ import java.util.List;
 
 public class QueryBuilder {
 	
-	public static final String FORACARE_ACCOUNT = "UNIDOSADMIN";
-	public static final String FORACARE_PASSWORD = "AAUHCGP01";
+	public static final String FORACARE_ACCOUNT = "";
+	public static final String FORACARE_PASSWORD = "";
 	
 	public static final String API_IDATA_HEADER =  "<?xml version=\"1.0\" encoding=\"utf-8\" ?>" +
 												   "<QueryData>\r\n" + 
