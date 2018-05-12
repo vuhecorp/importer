@@ -10,7 +10,6 @@ import java.rmi.RemoteException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import javax.xml.namespace.QName;
 import javax.xml.parsers.DocumentBuilder;
@@ -19,27 +18,22 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.soap.SOAPElement;
 import javax.xml.soap.SOAPException;
 import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import org.apache.axis.message.SOAPHeaderElement;
-import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
-import org.json.CDL;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.XML;
 import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
-import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.tdcare.bom.DataInterchangeResponse;
 import com.tdcare.www.WS_DataInterchangeServiceLocator;
 import com.tdcare.www.WS_DataInterchangeServiceSoapStub;
 import com.unidos.fora.bom.ApplicationContext;
@@ -49,9 +43,17 @@ import com.unidos.fora.client.responsebo.MData;
 import com.unidos.fora.client.responsebo.MDataDeserializer;
 import com.unidos.fora.client.responsebo.PatientReadingResponse;
 
+/**
+ * Data Import Service
+ * 
+ * Connects to the Foracare API and retrieves a response.
+ * Saves the data to persistent storage.
+ * 
+ * @author vuhernandez
+ */
 public class DataImportService {
-	static Logger log = Logger.getLogger(DataImportService.class.getName());
 	
+	static Logger log = Logger.getLogger(DataImportService.class.getName());
 	static String DATA_DIRECTORY = new String();
 	static String CONFIG_FILE_LOCATION = new String();
 	private static ApplicationContext context = null;
@@ -59,14 +61,12 @@ public class DataImportService {
 	public static void main(String[] args) {
 		
 		//validate for required arguments
-		
-		/*if (args.length != 1) {
+		if (args.length != 1) {
 			log.error("No configuration file specified. Exit..");
 			System.exit(1);
-		}*/
+		}
 		
-		/*CONFIG_FILE_LOCATION = args[0];*/
-		CONFIG_FILE_LOCATION = "E:\\config.properties";
+		CONFIG_FILE_LOCATION = args[0];
 		
 		try {
 			setConfigPorperties();
@@ -78,7 +78,7 @@ public class DataImportService {
 			//generate the required soap header element
 			stub.setHeader(generateSoapHeaderElem());
 			
-			//execute imports.
+			//execute api call to import data.
 			List<QueryBO> queries = executeDataImports(stub);
 			
 			//extract responses to objects.
@@ -105,7 +105,12 @@ public class DataImportService {
 		}
 	}
 	
+	/**
+	 * Sets initial configuration settings.
+	 * @throws Exception
+	 */
 	private static void setConfigPorperties() throws Exception {
+		
 		//set configuration file information and extract properties.
 		context = ApplicationContext.getInstance();
 		context.setPropertiesLocation(CONFIG_FILE_LOCATION);
@@ -115,6 +120,52 @@ public class DataImportService {
 		DATA_DIRECTORY = context.getProperties().getProperty(ApplicationContext.DATA_STORAGE_LOCATION);
 	}
 
+	/**
+	 * Generates Soap Header for API call.
+	 * @return
+	 * @throws SOAPException
+	 */
+	private static SOAPHeaderElement generateSoapHeaderElem() throws SOAPException {
+		
+		String username = context.getApiUsername();
+		String password = context.getApiPassword();
+		
+		log.info("Generating header soap object.");
+		String targetNamespace = "http://www.tdcare.com/";
+		QName qname = new QName(targetNamespace, "sValidationSoapHeader", new String());
+		SOAPHeaderElement sValidationSoapHeader = new SOAPHeaderElement(qname);
+		SOAPElement userName = sValidationSoapHeader.addChildElement("Username");
+		userName.addTextNode(username);
+		SOAPElement headerPassword = sValidationSoapHeader.addChildElement("Password");
+	    headerPassword.addTextNode(password);
+	    return sValidationSoapHeader;
+	}
+	
+	/**
+	 * Places the api call and retrieves a response.
+	 * @param stub
+	 * @return
+	 * @throws SAXException
+	 * @throws ParserConfigurationException
+	 * @throws IOException
+	 * @throws TransformerException
+	 */
+	private static List<QueryBO> executeDataImports(WS_DataInterchangeServiceSoapStub stub) throws SAXException, ParserConfigurationException, IOException, TransformerException {
+		QueryBOService queryService = new QueryBOService();
+		List<QueryBO> queryList = queryService.getQueryList();
+		for (QueryBO query : queryList) {
+			log.info("Importing: " + query.getDesc());
+			String response = stub.dataInterchange(query.getqCode(), insertCredentials(query.getiData()));
+			query.setXMLResponse(response);
+			stringToDocument(query);
+		}
+		return queryList;
+	}
+
+	/**
+	 * Extracts to objects for data persistence
+	 * @param queries
+	 */
 	private static void extractToObjects(List<QueryBO> queries) {
 		try {
 			for (QueryBO queryBO : queries) {
@@ -126,33 +177,27 @@ public class DataImportService {
 			throw e;
 		}
 	}
-
-	public static List<QueryBO> executeDataImports(WS_DataInterchangeServiceSoapStub stub) throws SAXException, ParserConfigurationException, IOException, TransformerException {
-		QueryBOService queryService = new QueryBOService();
-		List<QueryBO> queryList = queryService.getQueryList();
-		for (QueryBO query : queryList) {
-			log.info("Importing: " + query.getDesc());
-			String response = stub.dataInterchange(query.getqCode(), query.getiData());
-			query.setXMLResponse(response);
-			stringToDocument(query);
-		}
-		return queryList;
-	}
-
 	
-	public static void stringToDocument(QueryBO query) 
+	/*=========================================
+	 * Helper Methods
+	 *=========================================*/
+	
+	private static void stringToDocument(QueryBO query) 
 	        throws SAXException, ParserConfigurationException, IOException, TransformerException {
 		stringToXMLDocument(query);
 	    stringToJSONDocument(query);
 	}
 	
+	/**
+	 * Creates a .json file and provides a json response for the query object
+	 * @param query
+	 */
 	@SuppressWarnings("unchecked")
 	private static void stringToJSONDocument(QueryBO query) {
 		log.info("Writing to JSON Document..");
 		JSONObject xmlJSONObj = XML.toJSONObject(query.getXMLResponse());
 		String jsonResponse = xmlJSONObj.toString();
 		query.setJSONResponse(jsonResponse);
-		
 		Map<String, Object> map = new HashMap<String, Object>();
 		map = (Map<String, Object>) new Gson().fromJson(jsonResponse, map.getClass());
 		
@@ -164,6 +209,10 @@ public class DataImportService {
 		}
 	}
 
+	/**
+	 * Created a response object for data persistence.
+	 * @param query
+	 */
 	private static void parseToObject(QueryBO query) {
 		try {
 		 	GsonBuilder gsonBuilder = new GsonBuilder();
@@ -176,6 +225,14 @@ public class DataImportService {
 		}
 	}
 
+	/**
+	 * Created an .xml file from the api response.
+	 * @param query
+	 * @throws ParserConfigurationException
+	 * @throws SAXException
+	 * @throws IOException
+	 * @throws TransformerException
+	 */
 	private static void stringToXMLDocument(QueryBO query) throws ParserConfigurationException, SAXException, IOException, TransformerException {
 		log.info("Writing to XML Document..");
 		// Parse the given input
@@ -191,35 +248,27 @@ public class DataImportService {
 	   
 	    transformer.transform(source, result);
 	}
-
+	
 	/**
-	 * Generates Soap Header for API call.
+	 * replaces the interpolation key with the actual values.
+	 * @param query
 	 * @return
-	 * @throws SOAPException
 	 */
-	public static SOAPHeaderElement generateSoapHeaderElem() throws SOAPException {
-		
-		String username = context.getProperties().getProperty(ApplicationContext.FORACARE_API_USERNAME);
-		String password = context.getProperties().getProperty(ApplicationContext.FORACARE_API_PASSWORD);
-		
-		log.info("Generating header soap object.");
-		String targetNamespace = "http://www.tdcare.com/";
-		QName qname = new QName(targetNamespace, "sValidationSoapHeader", new String());
-		SOAPHeaderElement sValidationSoapHeader = new SOAPHeaderElement(qname);
-		SOAPElement userName = sValidationSoapHeader.addChildElement("Username");
-		userName.addTextNode(username);
-		SOAPElement headerPassword = sValidationSoapHeader.addChildElement("Password");
-	    headerPassword.addTextNode(password);
-	    return sValidationSoapHeader;
+	private static String insertCredentials(String query) {
+		String account = context.getForacareAccount();
+		String password = context.getForacarePassword();
+		query = StringUtils.replace(query, ApplicationContext.ACCOUNT_KEY, account);
+		query = StringUtils.replace(query, ApplicationContext.PASSWORD_KEY, password);
+		return query;
 	}
 	
-	public static void clear() {
-
+	private static void clear() {
 		 try {
 			new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
 		} catch (InterruptedException | IOException e) {
 			;;
 		}
 	}
+	
 	
 }

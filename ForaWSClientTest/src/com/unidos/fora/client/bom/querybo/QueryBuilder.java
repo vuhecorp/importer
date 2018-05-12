@@ -5,22 +5,23 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import com.unidos.fora.bom.ApplicationContext;
+
+/**
+ * @author vuhernandez
+ */
 public class QueryBuilder {
-	
-	public static final String FORACARE_ACCOUNT = "";
-	public static final String FORACARE_PASSWORD = "";
 	
 	public static final String API_IDATA_HEADER =  "<?xml version=\"1.0\" encoding=\"utf-8\" ?>" +
 												   "<QueryData>\r\n" + 
-												   "<Account>" + FORACARE_ACCOUNT + "</Account>\r\n" + 
-												   "<Password>" + FORACARE_PASSWORD + "</Password>\r\n";
+												   "<Account>" + ApplicationContext.ACCOUNT_KEY + "</Account>\r\n" + 
+												   "<Password>" + ApplicationContext.PASSWORD_KEY + "</Password>\r\n";
 	
-	public static SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd");
+	public static final SimpleDateFormat SDF = new SimpleDateFormat("yyyy/MM/dd");
 	
 	public QueryBuilder() {
 		
 	}
-	
 	
 	/**
 	 * Builds the generic query type.
@@ -73,8 +74,8 @@ public class QueryBuilder {
 		query.append(API_IDATA_HEADER);
 		
 		//build iData
-		query.append("<QSDate>"+ sdf.format(startDate)+ "</QSDate>"); 
-		query.append("<QEDate>"+ sdf.format(endDate)+ "</QEDate>");
+		query.append("<QSDate>"+ SDF.format(startDate)+ "</QSDate>"); 
+		query.append("<QEDate>"+ SDF.format(endDate)+ "</QEDate>");
 		query.append("<QMType>" + QMType +"</QMType>");
 		query.append("<QCase>");
 		
@@ -150,7 +151,6 @@ public class QueryBuilder {
 	public static String Q0004Builder(List<String> pids) {
 		return GenericBuilder(pids);
 	}
-	
 		
 	/**
 	 * Generic Q0006 builder
@@ -193,7 +193,7 @@ public class QueryBuilder {
 	 * @param ids
 	 * @return
 	 */
-	public static String QOOO6PBuilder(List<String> pids) {
+	public static String Q0006PBuilder(List<String> pids) {
 		return Q0006Builder("PID", pids);
 	}
 	
@@ -202,7 +202,7 @@ public class QueryBuilder {
 	 * @param cids
 	 * @return
 	 */
-	public static String QOOO6CBuilder(List<String> cids) {
+	public static String Q0006CBuilder(List<String> cids) {
 		return Q0006Builder("CID", cids);
 	}
 

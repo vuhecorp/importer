@@ -3,6 +3,10 @@ package com.unidos.fora.client.responsebo;
 import java.util.ArrayList;
 
 
+/**
+ * @author vuhernandez
+ * @company www.rgvdatasolutions.com
+ */
 public class CaseMData
 {
     private String PID;

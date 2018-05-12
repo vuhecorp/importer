@@ -1,5 +1,8 @@
 package com.unidos.fora.client.bom.querybo;
 
+/**
+ * @author vuhernandez
+ */
 public class QueryBO {
 
 	private String name;

@@ -5,6 +5,9 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 
+/**
+ * @author vuhernandez
+ */
 public class DefaultConnectionProvider implements ConnectionProvider {
 	
 	private static Connection connection;
